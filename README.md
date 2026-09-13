@@ -2,7 +2,7 @@
 
 - github pages
 
-  https://taku0622.github.io/
+  https://taku-ts.github.io/
 
 - vercel
 
