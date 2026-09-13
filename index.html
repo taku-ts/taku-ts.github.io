@@ -1,487 +1,320 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>COSMOS</title>
-<style>
-  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-  #renderCanvas { width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
-  #loading {
-    position: fixed; inset: 0; background: #000; color: #8fd0ff;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif; font-size: 1.1rem;
-    letter-spacing: 0.35em; z-index: 10; transition: opacity 1s ease;
-  }
-  #loading.hide { opacity: 0; pointer-events: none; }
-  #fallback { display:none; position:fixed; inset:0; background:#000; color:#fff; align-items:center; justify-content:center; font-family:sans-serif; padding:2rem; text-align:center; }
-</style>
-</head>
-<body>
-<div id="loading">LOADING COSMOS…</div>
-<div id="fallback">このブラウザは WebGL に対応していないため、3D宇宙を表示できません。</div>
-<canvas id="renderCanvas"></canvas>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<script src="https://cdn.babylonjs.com/babylon.js"></script>
-<script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+  <title>Taku | Web Engineer</title>
+  <meta
+    name="description"
+    content="Takuのプロフィールサイト。TypeScript、JavaScript、Nuxt、Node.jsなどを中心にWeb開発をしています。"
+  />
 
-<script>
-(function () {
-  "use strict";
-
-  var canvas = document.getElementById("renderCanvas");
-
-  if (typeof BABYLON === "undefined" || !BABYLON.Engine.isSupported()) {
-    document.getElementById("fallback").style.display = "flex";
-    document.getElementById("loading").style.display = "none";
-    return;
-  }
-
-  var engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, antialias: true }, true);
-
-  // ---------- texture helpers ----------
-
-  function clamp255(v) { return Math.max(0, Math.min(255, Math.round(v))); }
-
-  function createStarfieldTexture(scene) {
-    var size = 2048;
-    var tex = new BABYLON.DynamicTexture("starTex", size, scene, false);
-    var ctx = tex.getContext();
-
-    ctx.fillStyle = "#02020a";
-    ctx.fillRect(0, 0, size, size);
-
-    var nebulaColors = [
-      "rgba(90,40,130,0.22)",
-      "rgba(30,60,130,0.20)",
-      "rgba(130,40,90,0.16)",
-      "rgba(30,110,120,0.14)"
-    ];
-    for (var i = 0; i < 20; i++) {
-      var x = Math.random() * size, y = Math.random() * size;
-      var r = 150 + Math.random() * 380;
-      var grad = ctx.createRadialGradient(x, y, 0, x, y, r);
-      grad.addColorStop(0, nebulaColors[i % nebulaColors.length]);
-      grad.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-sub: #161b22;
+      --text: #e6edf3;
+      --text-sub: #8b949e;
+      --border: #30363d;
+      --accent: #58a6ff;
     }
 
-    for (var i2 = 0; i2 < 4500; i2++) {
-      var sx = Math.random() * size, sy = Math.random() * size;
-      var sr = Math.random() * 1.3 + 0.15;
-      var b = Math.random();
-      var col;
-      if (b > 0.97) col = "rgba(160,200,255,";
-      else if (b > 0.94) col = "rgba(255,210,160,";
-      else col = "rgba(255,255,255,";
-      var a = 0.35 + Math.random() * 0.65;
-      ctx.fillStyle = col + a + ")";
-      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+    * {
+      box-sizing: border-box;
     }
 
-    for (var i3 = 0; i3 < 70; i3++) {
-      var bx = Math.random() * size, by = Math.random() * size;
-      var br = 1.5 + Math.random() * 2.2;
-      var bg = ctx.createRadialGradient(bx, by, 0, bx, by, br * 6);
-      bg.addColorStop(0, "rgba(255,255,255,0.9)");
-      bg.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = bg;
-      ctx.beginPath(); ctx.arc(bx, by, br * 6, 0, Math.PI * 2); ctx.fill();
+    html {
+      scroll-behavior: smooth;
     }
 
-    tex.update(false);
-    return tex;
-  }
-
-  function createPlanetTexture(scene, baseColor, opt) {
-    opt = opt || {};
-    var size = 512;
-    var tex = new BABYLON.DynamicTexture("planetTex" + Math.random(), size, scene, false);
-    var ctx = tex.getContext();
-    var r = baseColor[0], g = baseColor[1], bl = baseColor[2];
-
-    ctx.fillStyle = "rgb(" + r + "," + g + "," + bl + ")";
-    ctx.fillRect(0, 0, size, size);
-
-    var bandCount = opt.bands || 6;
-    for (var i = 0; i < bandCount; i++) {
-      var y = (size / bandCount) * i;
-      var h = size / bandCount;
-      var shade = (Math.random() - 0.5) * 45;
-      ctx.fillStyle = "rgba(" + clamp255(r + shade) + "," + clamp255(g + shade) + "," + clamp255(bl + shade) + "," + (0.25 + Math.random() * 0.3) + ")";
-      ctx.fillRect(0, y, size, h);
+    body {
+      margin: 0;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Noto Sans JP",
+        sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
     }
 
-    var blotchCount = opt.blotches || 45;
-    var blotchSize = opt.blotchSize || 30;
-    for (var j = 0; j < blotchCount; j++) {
-      var bx = Math.random() * size, by = Math.random() * size;
-      var rad = 5 + Math.random() * blotchSize;
-      var sh = (Math.random() - 0.5) * 60;
-      ctx.fillStyle = "rgba(" + clamp255(r + sh) + "," + clamp255(g + sh) + "," + clamp255(bl + sh) + "," + (0.15 + Math.random() * 0.28) + ")";
-      ctx.beginPath();
-      ctx.ellipse(bx, by, rad, rad * 0.6, Math.random() * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
+    a {
+      color: var(--accent);
+      text-decoration: none;
     }
 
-    tex.update(false);
-    return tex;
-  }
-
-  function createRingTexture(scene, colorBase) {
-    var size = 512;
-    var tex = new BABYLON.DynamicTexture("ringTex" + Math.random(), size, scene, false);
-    var ctx = tex.getContext();
-    ctx.clearRect(0, 0, size, size);
-    var r = colorBase[0], g = colorBase[1], b = colorBase[2];
-
-    for (var y = 0; y < size; y++) {
-      var t = y / size;
-      var noise = Math.sin(t * 80) * 0.15 + Math.sin(t * 23 + 2) * 0.1;
-      var alpha = 0.32 + noise;
-      if (Math.sin(t * 40) > 0.85) alpha *= 0.15;
-      // fade at inner/outer edges
-      var edge = Math.min(t, 1 - t) * 6;
-      alpha *= Math.min(1, edge);
-      alpha = Math.max(0, Math.min(0.85, alpha));
-      ctx.fillStyle = "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
-      ctx.fillRect(0, y, size, 1);
+    a:hover {
+      text-decoration: underline;
     }
 
-    tex.update(false);
-    tex.hasAlpha = true;
-    return tex;
-  }
-
-  var glowSpriteCache = null;
-  function createGlowSpriteTexture(scene) {
-    if (glowSpriteCache) return glowSpriteCache;
-    var size = 128;
-    var tex = new BABYLON.DynamicTexture("glowSprite", size, scene, false);
-    var ctx = tex.getContext();
-    ctx.clearRect(0, 0, size, size);
-    var grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.4, "rgba(255,225,160,0.6)");
-    grad.addColorStop(1, "rgba(255,180,80,0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); ctx.fill();
-    tex.update(false);
-    tex.hasAlpha = true;
-    glowSpriteCache = tex;
-    return tex;
-  }
-
-  // ---------- scene pieces ----------
-
-  function createSkybox(scene) {
-    var skybox = BABYLON.MeshBuilder.CreateSphere("skybox", { diameter: 4000, segments: 16 }, scene);
-    skybox.infiniteDistance = true;
-    skybox.isPickable = false;
-    var mat = new BABYLON.StandardMaterial("skyboxMat", scene);
-    mat.backFaceCulling = false;
-    mat.disableLighting = true;
-    mat.emissiveTexture = createStarfieldTexture(scene);
-    mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-    mat.specularColor = new BABYLON.Color3(0, 0, 0);
-    skybox.material = mat;
-    return skybox;
-  }
-
-  function createSun(scene) {
-    var sun = BABYLON.MeshBuilder.CreateSphere("sun", { diameter: 10, segments: 32 }, scene);
-    var mat = new BABYLON.StandardMaterial("sunMat", scene);
-    mat.emissiveTexture = createPlanetTexture(scene, [255, 190, 90], { bands: 8, blotches: 60, blotchSize: 40 });
-    mat.emissiveColor = new BABYLON.Color3(1, 1, 1);
-    mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-    mat.disableLighting = true;
-    sun.material = mat;
-    sun.isPickable = false;
-
-    var ps = new BABYLON.ParticleSystem("corona", 500, scene);
-    ps.particleTexture = createGlowSpriteTexture(scene);
-    ps.emitter = sun;
-    ps.minEmitBox = new BABYLON.Vector3(-2, -2, -2);
-    ps.maxEmitBox = new BABYLON.Vector3(2, 2, 2);
-    ps.color1 = new BABYLON.Color4(1, 0.6, 0.2, 0.55);
-    ps.color2 = new BABYLON.Color4(1, 0.35, 0.1, 0.35);
-    ps.colorDead = new BABYLON.Color4(1, 0.2, 0, 0);
-    ps.minSize = 1.2; ps.maxSize = 3.5;
-    ps.minLifeTime = 1.2; ps.maxLifeTime = 2.6;
-    ps.emitRate = 70;
-    ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
-    ps.gravity = BABYLON.Vector3.Zero();
-    ps.direction1 = new BABYLON.Vector3(-1, -1, -1);
-    ps.direction2 = new BABYLON.Vector3(1, 1, 1);
-    ps.minEmitPower = 0.15; ps.maxEmitPower = 0.5;
-    ps.updateSpeed = 0.01;
-    ps.start();
-
-    scene.onBeforeRenderObservable.add(function () {
-      sun.rotation.y += 0.0006;
-    });
-
-    return sun;
-  }
-
-  function createPlanet(scene, pd) {
-    var pivot = new BABYLON.TransformNode("pivot_" + pd.name, scene);
-    pivot.rotation.y = Math.random() * Math.PI * 2;
-    pivot.rotation.x = (Math.random() - 0.5) * 0.06;
-
-    var planet = BABYLON.MeshBuilder.CreateSphere(pd.name, { diameter: pd.radius * 2, segments: 32 }, scene);
-    planet.parent = pivot;
-    planet.position.x = pd.orbitRadius;
-    planet.rotation.z = (Math.random() - 0.5) * 0.4;
-
-    var mat = new BABYLON.StandardMaterial(pd.name + "Mat", scene);
-    mat.diffuseTexture = createPlanetTexture(scene, pd.color, pd.textureOptions || {});
-    mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
-    planet.material = mat;
-
-    if (pd.hasRing) {
-      var ring = BABYLON.MeshBuilder.CreateTorus(pd.name + "Ring", {
-        diameter: pd.radius * 3.6,
-        thickness: pd.radius * 1.6,
-        tessellation: 96
-      }, scene);
-      // Parented to the orbit pivot (not the planet mesh) so the ring stays
-      // flat in the orbital plane instead of tumbling with the planet's axial spin.
-      ring.parent = pivot;
-      ring.position.x = pd.orbitRadius;
-      ring.scaling.y = 0.02;
-      var ringMat = new BABYLON.StandardMaterial(pd.name + "RingMat", scene);
-      ringMat.diffuseTexture = createRingTexture(scene, pd.ringColor || [210, 195, 165]);
-      ringMat.useAlphaFromDiffuseTexture = true;
-      ringMat.backFaceCulling = false;
-      ringMat.specularColor = new BABYLON.Color3(0, 0, 0);
-      ring.material = ringMat;
-      ring.isPickable = false;
+    .container {
+      width: min(900px, 90%);
+      margin: 0 auto;
     }
 
-    if (pd.hasAtmosphere) {
-      var atm = BABYLON.MeshBuilder.CreateSphere(pd.name + "Atm", { diameter: pd.radius * 2.18, segments: 32 }, scene);
-      atm.parent = planet;
-      var atmMat = new BABYLON.StandardMaterial(pd.name + "AtmMat", scene);
-      atmMat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-      atmMat.emissiveColor = new BABYLON.Color3(pd.color[0] / 255 * 0.35, pd.color[1] / 255 * 0.45, 0.75);
-      atmMat.alpha = 0.15;
-      atmMat.backFaceCulling = false;
-      atm.material = atmMat;
-      atm.isPickable = false;
+    header {
+      min-height: 70vh;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
     }
 
-    if (pd.hasMoon) {
-      var moonPivot = new BABYLON.TransformNode(pd.name + "MoonPivot", scene);
-      moonPivot.parent = planet;
-      var moon = BABYLON.MeshBuilder.CreateSphere(pd.name + "Moon", { diameter: pd.radius * 0.5, segments: 16 }, scene);
-      moon.parent = moonPivot;
-      moon.position.x = pd.radius * 2.3;
-      var moonMat = new BABYLON.StandardMaterial(pd.name + "MoonMat", scene);
-      moonMat.diffuseTexture = createPlanetTexture(scene, [175, 172, 168], { bands: 3, blotches: 70, blotchSize: 8 });
-      moon.material = moonMat;
-      moon.isPickable = false;
-      scene.onBeforeRenderObservable.add(function () {
-        moonPivot.rotation.y += 0.02;
-      });
+    .hero {
+      padding: 80px 0;
     }
 
-    scene.onBeforeRenderObservable.add(function () {
-      pivot.rotation.y += pd.orbitSpeed * 0.002;
-      planet.rotation.y += pd.rotationSpeed;
-    });
-
-    planet.isPickable = false;
-  }
-
-  function createAsteroidBelt(scene, innerR, outerR, count) {
-    var base = BABYLON.MeshBuilder.CreatePolyhedron("asteroidBelt", { type: 1, size: 0.15 }, scene);
-    var mat = new BABYLON.StandardMaterial("asteroidMat", scene);
-    mat.diffuseColor = new BABYLON.Color3(0.42, 0.4, 0.37);
-    mat.specularColor = new BABYLON.Color3(0, 0, 0);
-    base.material = mat;
-    base.isPickable = false;
-
-    var buffer = new Float32Array(count * 16);
-    for (var i = 0; i < count; i++) {
-      var angle = Math.random() * Math.PI * 2;
-      var r = innerR + Math.random() * (outerR - innerR);
-      var y = (Math.random() - 0.5) * 1.4;
-      var scale = 0.3 + Math.random() * 1.3;
-      var rotM = BABYLON.Matrix.RotationYawPitchRoll(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-      var scaleM = BABYLON.Matrix.Scaling(scale, scale, scale);
-      var transM = BABYLON.Matrix.Translation(Math.cos(angle) * r, y, Math.sin(angle) * r);
-      var m = scaleM.multiply(rotM).multiply(transM);
-      m.copyToArray(buffer, i * 16);
+    .hero-label {
+      color: var(--accent);
+      font-size: 1rem;
+      margin-bottom: 8px;
     }
-    base.thinInstanceSetBuffer("matrix", buffer, 16, true);
 
-    scene.onBeforeRenderObservable.add(function () {
-      base.rotation.y += 0.0004;
-    });
-  }
+    h1 {
+      margin: 0;
+      font-size: clamp(3rem, 9vw, 6rem);
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+    }
 
-  var shootingTexCache = null;
-  function spawnShootingStar(scene) {
-    var start = new BABYLON.Vector3(
-      (Math.random() - 0.5) * 400,
-      (Math.random() - 0.2) * 180,
-      (Math.random() - 0.5) * 400
-    );
-    var dir = new BABYLON.Vector3(
-      (Math.random() - 0.5),
-      (Math.random() - 0.5) * 0.4 - 0.15,
-      (Math.random() - 0.5)
-    ).normalize();
+    .hero-description {
+      max-width: 600px;
+      margin-top: 24px;
+      color: var(--text-sub);
+      font-size: 1.1rem;
+    }
 
-    var ps = new BABYLON.ParticleSystem("shootingStar", 150, scene);
-    ps.particleTexture = createGlowSpriteTexture(scene);
-    ps.emitter = start;
-    ps.minEmitBox = BABYLON.Vector3.Zero();
-    ps.maxEmitBox = BABYLON.Vector3.Zero();
-    ps.color1 = new BABYLON.Color4(1, 1, 1, 1);
-    ps.color2 = new BABYLON.Color4(0.6, 0.8, 1, 0.85);
-    ps.colorDead = new BABYLON.Color4(0.2, 0.4, 1, 0);
-    ps.minSize = 0.6; ps.maxSize = 1.4;
-    ps.minLifeTime = 0.35; ps.maxLifeTime = 0.6;
-    ps.emitRate = 300;
-    ps.direction1 = dir; ps.direction2 = dir;
-    ps.minEmitPower = 70; ps.maxEmitPower = 100;
-    ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
-    ps.gravity = BABYLON.Vector3.Zero();
-    ps.targetStopDuration = 0.45;
-    ps.disposeOnStop = true;
-    ps.start();
-  }
+    section {
+      padding: 72px 0;
+      border-bottom: 1px solid var(--border);
+    }
 
-  function createUI() {
-    if (typeof BABYLON.GUI === "undefined") return;
-    var ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    h2 {
+      margin-top: 0;
+      margin-bottom: 32px;
+      font-size: 2rem;
+    }
 
-    var title = new BABYLON.GUI.TextBlock();
-    title.text = "COSMOS";
-    title.color = "#bfe6ff";
-    title.fontSize = "min(9vw, 64px)";
-    title.fontFamily = "'Segoe UI', 'Helvetica Neue', sans-serif";
-    title.top = "-36%";
-    title.alpha = 0;
-    title.shadowColor = "#3fa9ff";
-    title.shadowBlur = 20;
-    ui.addControl(title);
+    .about {
+      max-width: 700px;
+    }
 
-    var subtitle = new BABYLON.GUI.TextBlock();
-    subtitle.text = "ドラッグで視点回転 ・ ホイールでズーム";
-    subtitle.color = "rgba(200,220,255,0.75)";
-    subtitle.fontSize = "16px";
-    subtitle.fontFamily = "'Segoe UI', 'Helvetica Neue', sans-serif";
-    subtitle.top = "-27%";
-    subtitle.alpha = 0;
-    ui.addControl(subtitle);
+    .about p {
+      color: var(--text-sub);
+    }
 
-    var f = 0;
-    function fadeIn() {
-      f += 0.012;
-      title.alpha = Math.min(1, f);
-      subtitle.alpha = Math.min(1, f * 0.85);
-      if (f < 1.2) {
-        requestAnimationFrame(fadeIn);
-      } else {
-        setTimeout(function () {
-          (function fadeOut() {
-            f -= 0.012;
-            title.alpha = Math.max(0, f);
-            subtitle.alpha = Math.max(0, f * 0.85);
-            if (f > 0) requestAnimationFrame(fadeOut);
-          })();
-        }, 3200);
+    .skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .skill {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--bg-sub);
+      font-size: 0.9rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      padding: 24px;
+      background: var(--bg-sub);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--text-sub);
+      font-size: 0.95rem;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .link-button {
+      display: inline-block;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      transition:
+        background 0.2s,
+        border-color 0.2s;
+    }
+
+    .link-button:hover {
+      background: var(--bg-sub);
+      border-color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer {
+      padding: 40px 0;
+      color: var(--text-sub);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        min-height: 60vh;
+      }
+
+      section {
+        padding: 56px 0;
       }
     }
-    fadeIn();
-  }
+  </style>
+</head>
 
-  // ---------- scene assembly ----------
+<body>
+  <header>
+    <div class="container hero">
+      <div class="hero-label">Hello, I'm</div>
 
-  function createScene() {
-    var scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0.01, 0.01, 0.03, 1);
+      <h1>Taku.</h1>
 
-    var camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2.3, Math.PI / 2.3, 95, BABYLON.Vector3.Zero(), scene);
-    camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 14;
-    camera.upperRadiusLimit = 320;
-    camera.wheelDeltaPercentage = 0.02;
-    camera.pinchDeltaPercentage = 0.02;
-    camera.minZ = 0.1;
-    camera.maxZ = 6000;
-    camera.panningSensibility = 0;
-    camera.useAutoRotationBehavior = true;
-    camera.autoRotationBehavior.idleRotationSpeed = 0.04;
-    camera.autoRotationBehavior.idleRotationWaitTime = 2500;
-    camera.autoRotationBehavior.idleRotationSpinupTime = 2000;
+      <p class="hero-description">
+        Webエンジニアです。<br />
+        TypeScript / JavaScriptを中心に、
+        Webアプリケーション開発をしています。
+      </p>
+    </div>
+  </header>
 
-    var sunLight = new BABYLON.PointLight("sunLight", BABYLON.Vector3.Zero(), scene);
-    sunLight.intensity = 3.2;
-    sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
+  <main>
+    <section>
+      <div class="container">
+        <h2>About</h2>
 
-    var ambient = new BABYLON.HemisphericLight("ambient", new BABYLON.Vector3(0, 1, 0), scene);
-    ambient.intensity = 0.06;
+        <div class="about">
+          <p>
+            Takuです。Webアプリケーションの開発に携わっています。
+          </p>
 
-    var glow = new BABYLON.GlowLayer("glow", scene, { mainTextureRatio: 0.5 });
-    glow.intensity = 0.85;
+          <p>
+            TypeScriptやJavaScriptを中心に、
+            Nuxt、Node.jsなどのWeb技術を勉強・利用しています。
+          </p>
 
-    createSkybox(scene);
-    createSun(scene);
+          <p>
+            「動けばいい」だけではなく、
+            読みやすく、変更しやすいコードを書くことを大切にしています。
+            最近はClean Codeや設計についても勉強しています。
+          </p>
 
-    var planetData = [
-      { name: "Mercury", radius: 0.4, orbitRadius: 12, orbitSpeed: 0.9, rotationSpeed: 0.002, color: [150, 140, 130], textureOptions: { bands: 4, blotches: 60, blotchSize: 10 } },
-      { name: "Venus", radius: 0.9, orbitRadius: 18, orbitSpeed: 0.72, rotationSpeed: 0.001, color: [210, 180, 120], textureOptions: { bands: 5, blotches: 20, blotchSize: 40 } },
-      { name: "Earth", radius: 1.0, orbitRadius: 25, orbitSpeed: 0.52, rotationSpeed: 0.012, color: [60, 110, 190], textureOptions: { bands: 6, blotches: 30, blotchSize: 35 }, hasMoon: true, hasAtmosphere: true },
-      { name: "Mars", radius: 0.6, orbitRadius: 32, orbitSpeed: 0.42, rotationSpeed: 0.009, color: [180, 90, 55], textureOptions: { bands: 4, blotches: 45, blotchSize: 20 } },
-      { name: "Jupiter", radius: 2.6, orbitRadius: 48, orbitSpeed: 0.15, rotationSpeed: 0.02, color: [200, 165, 120], textureOptions: { bands: 12, blotches: 25, blotchSize: 45 } },
-      { name: "Saturn", radius: 2.1, orbitRadius: 62, orbitSpeed: 0.1, rotationSpeed: 0.018, color: [215, 195, 150], textureOptions: { bands: 10, blotches: 15, blotchSize: 40 }, hasRing: true, ringColor: [210, 195, 165] },
-      { name: "Uranus", radius: 1.5, orbitRadius: 74, orbitSpeed: 0.07, rotationSpeed: 0.015, color: [140, 205, 210], textureOptions: { bands: 6, blotches: 10, blotchSize: 30 }, hasRing: true, ringColor: [150, 190, 200] }
-    ];
-    planetData.forEach(function (pd) { createPlanet(scene, pd); });
+          <p>
+            アルゴリズムの基礎を身につけるため、
+            TypeScriptでAtCoderにも取り組んでいます。
+          </p>
+        </div>
+      </div>
+    </section>
 
-    createAsteroidBelt(scene, 38, 43, 900);
+    <section>
+      <div class="container">
+        <h2>Skills</h2>
 
-    setInterval(function () { spawnShootingStar(scene); }, 2500);
+        <div class="skills">
+          <span class="skill">TypeScript</span>
+          <span class="skill">JavaScript</span>
+          <span class="skill">HTML</span>
+          <span class="skill">CSS</span>
+          <span class="skill">Vue.js</span>
+          <span class="skill">Nuxt</span>
+          <span class="skill">Node.js</span>
+          <span class="skill">Git</span>
+          <span class="skill">GitHub</span>
+          <span class="skill">AWS</span>
+        </div>
+      </div>
+    </section>
 
-    var pipeline = new BABYLON.DefaultRenderingPipeline("pipeline", true, scene, [camera]);
-    pipeline.bloomEnabled = true;
-    pipeline.bloomThreshold = 0.15;
-    pipeline.bloomWeight = 0.7;
-    pipeline.bloomKernel = 64;
-    pipeline.bloomScale = 0.55;
-    pipeline.fxaaEnabled = true;
-    pipeline.imageProcessing.contrast = 1.15;
-    pipeline.imageProcessing.exposure = 1.05;
-    pipeline.imageProcessing.vignetteEnabled = true;
-    pipeline.imageProcessing.vignetteWeight = 1.8;
-    pipeline.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0, 0, 0);
+    <section>
+      <div class="container">
+        <h2>Currently Learning</h2>
 
-    createUI();
+        <div class="cards">
+          <div class="card">
+            <h3>TypeScript</h3>
+            <p>
+              型を活かした安全で読みやすいコードの書き方を勉強しています。
+            </p>
+          </div>
 
-    return scene;
-  }
+          <div class="card">
+            <h3>Clean Code</h3>
+            <p>
+              保守しやすく、意図が伝わるコードや設計について勉強しています。
+            </p>
+          </div>
 
-  var scene = createScene();
+          <div class="card">
+            <h3>Algorithms</h3>
+            <p>
+              AtCoderを使ってアルゴリズムとデータ構造を勉強しています。
+            </p>
+          </div>
 
-  scene.executeWhenReady(function () {
-    var loading = document.getElementById("loading");
-    loading.classList.add("hide");
-    setTimeout(function () { loading.style.display = "none"; }, 1000);
-  });
+          <div class="card">
+            <h3>Node.js</h3>
+            <p>
+              非同期処理やNode.jsの仕組みについて理解を深めています。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  engine.runRenderLoop(function () {
-    scene.render();
-  });
+    <section>
+      <div class="container">
+        <h2>Links</h2>
 
-  window.addEventListener("resize", function () {
-    engine.resize();
-  });
-})();
-</script>
+        <div class="links">
+          <a
+            class="link-button"
+            href="https://github.com/taku-ts"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+
+          <a
+            class="link-button"
+            href="https://www.npmjs.com/~taku-ts"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            npm
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      © 2026 Taku / taku-ts.com
+    </div>
+  </footer>
 </body>
 </html>
